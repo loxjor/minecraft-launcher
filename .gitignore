@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+launcher/out/
+launcher/dist/
+
+# Runtime data (never commit these!)
+auth-server/data/
+launcher/data/
+
+# Private RSA keys — sensitive!
+*.pem
+
+# SQLite (legacy, using JSON now)
+*.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Temp
+*.tmp
+*.zip
+
+# Test server (large binary files)
+test-server/

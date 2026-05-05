@@ -1,0 +1,10 @@
+{
+  "name": "minecraft-launcher-workspace",
+  "private": true,
+  "scripts": {
+    "auth": "cd auth-server && npm start",
+    "auth:dev": "cd auth-server && npm run dev",
+    "launcher": "cd launcher && npm run dev",
+    "install:all": "cd auth-server && npm install && cd ../launcher && npm install"
+  }
+}
