@@ -9,6 +9,7 @@ const sessionserverRouter = require('./routes/sessionserver')
 
 const app  = express()
 const PORT = process.env.PORT || 3000
+const HOST = process.env.PUBLIC_HOST || `localhost:${PORT}`
 
 app.use(cors())
 app.use(express.json())
@@ -18,7 +19,7 @@ initKeys()   // generate or load RSA key pair
 
 // Yggdrasil meta — authlib-injector fetches this on startup
 app.get('/', (_req, res) => {
-  const base = `http://localhost:${PORT}`
+  const base = `http://${HOST}`
   res.json({
     meta: {
       serverName: 'MC Auth Server',
@@ -30,7 +31,7 @@ app.get('/', (_req, res) => {
       },
       feature: { non_email_login: true }
     },
-    skinDomains: ['localhost', '127.0.0.1'],
+    skinDomains: [HOST.split(':')[0]],
     signaturePublickey: getPublicKeyPem()
   })
 })

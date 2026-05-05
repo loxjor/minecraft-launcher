@@ -6,6 +6,7 @@ const { hasSkin, hasDefaultSkin } = require('../skins')
 const router = express.Router()
 
 const PORT = process.env.PORT || 3000
+const HOST = process.env.PUBLIC_HOST || `localhost:${PORT}`
 const stripDashes = (uuid) => uuid.replace(/-/g, '')
 
 function makeTexturesProperty(user) {
@@ -15,14 +16,14 @@ function makeTexturesProperty(user) {
 
   if (email && hasSkin(email)) {
     textures.SKIN = {
-      url: `http://localhost:${PORT}/skins/${encodeURIComponent(email)}.png`
+      url: `http://${HOST}/skins/${encodeURIComponent(email)}.png`
     }
     if (user.skin_model === 'slim') {
       textures.SKIN.metadata = { model: 'slim' }
     }
   } else if (hasDefaultSkin()) {
     textures.SKIN = {
-      url: `http://localhost:${PORT}/skins/default.png`
+      url: `http://${HOST}/skins/default.png`
     }
   }
 

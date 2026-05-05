@@ -1,0 +1,11 @@
+services:
+  auth-server:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data   # persist db.json, keys, user skins
+    environment:
+      - PORT=3000
+      - PUBLIC_HOST=localhost:3000   # замени на свой IP/домен, напр. 1.2.3.4:3000
+    restart: unless-stopped
