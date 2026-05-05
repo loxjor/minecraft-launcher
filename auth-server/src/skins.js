@@ -2,7 +2,7 @@ const path = require('path')
 const fs   = require('fs')
 
 const SKINS_DIR          = path.join(__dirname, '..', 'data', 'skins')
-const DEFAULT_SKIN_PATH  = path.join(SKINS_DIR, 'default.png')
+const DEFAULT_SKIN_PATH  = path.join(__dirname, '..', 'assets', 'default.png')
 
 function ensureDir() {
   if (!fs.existsSync(SKINS_DIR)) fs.mkdirSync(SKINS_DIR, { recursive: true })
