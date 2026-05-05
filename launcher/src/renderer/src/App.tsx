@@ -19,7 +19,6 @@ function TitleBar() {
       </div>
       <div className="titlebar-controls">
         <button className="titlebar-btn" onClick={() => window.api.window.minimize()} title="Свернуть">─</button>
-        <button className="titlebar-btn" onClick={() => window.api.window.maximize()} title="Развернуть">□</button>
         <button className="titlebar-btn close" onClick={() => window.api.window.close()} title="Закрыть">✕</button>
       </div>
     </div>

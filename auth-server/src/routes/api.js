@@ -2,7 +2,7 @@ const express = require('express')
 const bcrypt  = require('bcryptjs')
 const { v4: uuidv4 } = require('uuid')
 const { getDB } = require('../database')
-const { hasSkin, saveSkin, deleteSkin, isValidPng } = require('../skins')
+const { hasSkin, saveSkin, deleteSkin, isValidPng, saveDefaultSkin } = require('../skins')
 
 const router = express.Router()
 
@@ -60,11 +60,10 @@ router.post('/skin', (req, res) => {
   if (buffer.length > 1024 * 1024)
     return res.status(400).json({ error: 'Skin file too large (max 1 MB)' })
 
-  const uuidNoDashes = token.uuid.replace(/-/g, '')
-  saveSkin(uuidNoDashes, buffer)
+  saveSkin(token.email, buffer)
   db.users.setSkinModel(token.user_id, model === 'slim' ? 'slim' : 'classic')
 
-  console.log(`[API] Skin uploaded for ${token.username} (model: ${model || 'classic'})`)
+  console.log(`[API] Skin uploaded for ${token.username} <${token.email}> (model: ${model || 'classic'})`)
   res.json({ success: true })
 })
 
@@ -76,7 +75,7 @@ router.delete('/skin', (req, res) => {
   const token = db.tokens.findWithUser(accessToken)
   if (!token) return res.status(403).json({ error: 'Unauthorized' })
 
-  deleteSkin(token.uuid.replace(/-/g, ''))
+  deleteSkin(token.email)
   db.users.setSkinModel(token.user_id, 'classic')
 
   console.log(`[API] Skin deleted for ${token.username}`)
@@ -91,11 +90,29 @@ router.get('/skin/info', (req, res) => {
   const token = db.tokens.findWithUser(accessToken)
   if (!token) return res.status(403).json({ error: 'Unauthorized' })
 
-  const uuidNoDashes = token.uuid.replace(/-/g, '')
   res.json({
-    hasSkin: hasSkin(uuidNoDashes),
+    hasSkin: hasSkin(token.email),
     model:   token.skin_model || 'classic'
   })
+})
+
+// POST /api/skin/default  — set the global default skin (no auth, local only)
+router.post('/skin/default', (req, res) => {
+  const { skinData } = req.body || {}
+  if (!skinData) return res.status(400).json({ error: 'Missing skinData' })
+
+  let buffer
+  try { buffer = Buffer.from(skinData, 'base64') }
+  catch { return res.status(400).json({ error: 'Invalid base64 data' }) }
+
+  if (!isValidPng(buffer))
+    return res.status(400).json({ error: 'File must be a valid PNG image' })
+  if (buffer.length > 1024 * 1024)
+    return res.status(400).json({ error: 'Skin file too large (max 1 MB)' })
+
+  saveDefaultSkin(buffer)
+  console.log('[API] Default skin updated')
+  res.json({ success: true })
 })
 
 // ─── Launcher version ─────────────────────────────────────────────────────────

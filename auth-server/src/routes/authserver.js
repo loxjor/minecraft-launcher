@@ -42,7 +42,7 @@ router.post('/authenticate', async (req, res) => {
     const response = { accessToken, clientToken: usedClientToken, availableProfiles: [profile], selectedProfile: profile }
 
     if (requestUser) {
-      response.user = { id: stripDashes(user.uuid), username: user.username, properties: [] }
+      response.user = { id: stripDashes(user.uuid), username: user.username, email: user.email, properties: [] }
     }
 
     console.log(`[Auth] Login: ${user.username}`)

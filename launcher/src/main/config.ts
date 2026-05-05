@@ -14,6 +14,7 @@ export interface LauncherConfig {
   clientToken: string
   username: string
   uuid: string
+  email: string
 }
 
 const DEFAULTS: LauncherConfig = {
@@ -25,7 +26,8 @@ const DEFAULTS: LauncherConfig = {
   accessToken: '',
   clientToken: '',
   username: '',
-  uuid: ''
+  uuid: '',
+  email: ''
 }
 
 export function loadConfig(): LauncherConfig {

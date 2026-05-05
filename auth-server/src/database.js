@@ -88,7 +88,7 @@ const db = {
       if (!token) return null
       const user  = _findOne('users',  u => u.id === token.user_id)
       if (!user)  return null
-      return { ...token, username: user.username, uuid: user.uuid }
+      return { ...token, username: user.username, uuid: user.uuid, email: user.email }
     },
     insert(data)  { return _insert('tokens', data) },
     updateAccessToken(id, newToken) {

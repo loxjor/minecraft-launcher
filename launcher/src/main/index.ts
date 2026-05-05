@@ -91,7 +91,8 @@ ipcMain.handle('auth:login', async (_e, username: string, password: string) => {
     accessToken: profile.accessToken,
     clientToken: profile.clientToken,
     username: profile.username,
-    uuid: profile.uuid
+    uuid: profile.uuid,
+    email: profile.email
   })
 
   return profile
@@ -102,7 +103,7 @@ ipcMain.handle('auth:logout', async () => {
   if (cfg.accessToken) {
     await Auth.logout(cfg.authServerUrl, cfg.accessToken)
   }
-  saveConfig({ ...cfg, accessToken: '', clientToken: '', username: '', uuid: '' })
+  saveConfig({ ...cfg, accessToken: '', clientToken: '', username: '', uuid: '', email: '' })
   return true
 })
 
@@ -189,6 +190,12 @@ ipcMain.handle('dialog:openFile', async (_e, filters: { name: string; extensions
   return result.canceled ? null : result.filePaths[0]
 })
 
+// Read local file as base64 data URL (for skin preview in renderer)
+ipcMain.handle('file:readDataUrl', async (_e, filePath: string) => {
+  const buf = fs.readFileSync(filePath)
+  return 'data:image/png;base64,' + buf.toString('base64')
+})
+
 // ─── Skin ─────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('skin:upload', async (_e, filePath: string, model: string) => {
@@ -215,5 +222,13 @@ ipcMain.handle('skin:delete', async () => {
     data:    { accessToken: cfg.accessToken },
     timeout: 10_000
   })
+  return true
+})
+
+ipcMain.handle('skin:setDefault', async (_e, filePath: string) => {
+  const cfg = loadConfig()
+  const buffer   = fs.readFileSync(filePath)
+  const skinData = buffer.toString('base64')
+  await axios.post(`${cfg.authServerUrl}/api/skin/default`, { skinData }, { timeout: 10_000 })
   return true
 })

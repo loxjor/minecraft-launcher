@@ -2,7 +2,7 @@ const express = require('express')
 const cors    = require('cors')
 const { initDatabase }  = require('./database')
 const { initKeys, getPublicKeyPem } = require('./crypto')
-const { SKINS_DIR }     = require('./skins')
+const { SKINS_DIR, DEFAULT_SKIN_PATH, hasDefaultSkin } = require('./skins')
 const apiRouter          = require('./routes/api')
 const authserverRouter   = require('./routes/authserver')
 const sessionserverRouter = require('./routes/sessionserver')
@@ -39,7 +39,16 @@ app.use('/api', apiRouter)
 app.use('/authserver', authserverRouter)
 app.use('/sessionserver', sessionserverRouter)
 // Serve skin PNG files: GET /skins/{uuidNoDashes}.png
+// If the specific skin doesn't exist, fall back to default.png
 app.use('/skins', express.static(SKINS_DIR))
+app.get('/skins/:file', (_req, res) => {
+  // express.static calls next() when file not found — we catch it here
+  if (hasDefaultSkin()) {
+    res.sendFile(DEFAULT_SKIN_PATH)
+  } else {
+    res.status(404).json({ error: 'Skin not found' })
+  }
+})
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 

@@ -1,7 +1,7 @@
 const express = require('express')
 const { getDB } = require('../database')
 const { sign }  = require('../crypto')
-const { hasSkin } = require('../skins')
+const { hasSkin, hasDefaultSkin } = require('../skins')
 
 const router = express.Router()
 
@@ -10,14 +10,19 @@ const stripDashes = (uuid) => uuid.replace(/-/g, '')
 
 function makeTexturesProperty(user) {
   const uuidNoDashes = stripDashes(user.uuid)
+  const email        = user.email || ''
   const textures     = {}
 
-  if (hasSkin(uuidNoDashes)) {
+  if (email && hasSkin(email)) {
     textures.SKIN = {
-      url: `http://localhost:${PORT}/skins/${uuidNoDashes}.png`
+      url: `http://localhost:${PORT}/skins/${encodeURIComponent(email)}.png`
     }
     if (user.skin_model === 'slim') {
       textures.SKIN.metadata = { model: 'slim' }
+    }
+  } else if (hasDefaultSkin()) {
+    textures.SKIN = {
+      url: `http://localhost:${PORT}/skins/default.png`
     }
   }
 

@@ -5,6 +5,7 @@ export interface AuthProfile {
   clientToken: string
   username: string
   uuid: string        // no dashes
+  email: string
 }
 
 export async function register(
@@ -40,7 +41,8 @@ export async function login(
     accessToken: data.accessToken,
     clientToken: data.clientToken,
     username: data.selectedProfile.name,
-    uuid: data.selectedProfile.id
+    uuid: data.selectedProfile.id,
+    email: data.user?.email || ''
   }
 }
 

@@ -51,13 +51,16 @@ const api = {
   // File dialog
   dialog: {
     openFile: (filters: { name: string; extensions: string[] }[]) =>
-      ipcRenderer.invoke('dialog:openFile', filters)
+      ipcRenderer.invoke('dialog:openFile', filters),
+    readDataUrl: (filePath: string) =>
+      ipcRenderer.invoke('file:readDataUrl', filePath)
   },
 
   // Skin
   skin: {
-    upload: (filePath: string, model: string) => ipcRenderer.invoke('skin:upload', filePath, model),
-    delete: () => ipcRenderer.invoke('skin:delete')
+    upload:     (filePath: string, model: string) => ipcRenderer.invoke('skin:upload', filePath, model),
+    delete:     ()                                 => ipcRenderer.invoke('skin:delete'),
+    setDefault: (filePath: string)                 => ipcRenderer.invoke('skin:setDefault', filePath)
   },
 
   // Events

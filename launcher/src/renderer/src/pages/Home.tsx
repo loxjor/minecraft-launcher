@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 
 interface Props { onLogout: () => void }
 
@@ -24,6 +24,8 @@ const PHASES: Record<string, string> = {
 export default function Home({ onLogout }: Props) {
   const [tab, setTab]               = useState<Tab>('play')
   const [username, setUsername]     = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput]   = useState('')
   const [java, setJava]             = useState<JavaInfo | null>(null)
   const [javaLoading, setJavaLoad]  = useState(true)
   const [versions, setVersions]     = useState<VersionEntry[]>([])
@@ -34,6 +36,7 @@ export default function Home({ onLogout }: Props) {
   const [status, setStatus]         = useState<'idle' | 'downloading' | 'running'>('idle')
   const [logs, setLogs]             = useState<string[]>([])
   const [cfg, setCfg]               = useState<any>(null)
+  const [autoScroll, setAutoScroll] = useState(true)
   const consoleRef = useRef<HTMLDivElement>(null)
 
   // Init
@@ -67,10 +70,10 @@ export default function Home({ onLogout }: Props) {
 
   // Autoscroll console
   useEffect(() => {
-    if (consoleRef.current) {
+    if (autoScroll && consoleRef.current) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight
     }
-  }, [logs])
+  }, [logs, autoScroll])
 
   // Load versions
   async function loadVersions() {
@@ -138,6 +141,25 @@ export default function Home({ onLogout }: Props) {
     await window.api.config.set(newCfg)
   }
 
+  function startEditName() {
+    setNameInput(username)
+    setEditingName(true)
+  }
+
+  async function commitName() {
+    const trimmed = nameInput.trim()
+    if (trimmed && trimmed !== username) {
+      setUsername(trimmed)
+      await saveCfg({ username: trimmed })
+    }
+    setEditingName(false)
+  }
+
+  function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') commitName()
+    if (e.key === 'Escape') setEditingName(false)
+  }
+
   const progressPct = progress && progress.total > 0
     ? Math.round((progress.current / progress.total) * 100)
     : 0
@@ -165,7 +187,39 @@ export default function Home({ onLogout }: Props) {
           }}>
             🎮
           </div>
-          <div style={{ fontWeight: 600, color: 'var(--text-1)', fontSize: 14 }}>{username}</div>
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={handleNameKey}
+              maxLength={16}
+              style={{
+                background: 'var(--bg-3)',
+                border: '1px solid var(--accent)',
+                borderRadius: 6,
+                color: 'var(--text-1)',
+                fontSize: 13,
+                fontWeight: 600,
+                padding: '3px 7px',
+                width: '100%',
+                outline: 'none',
+              }}
+            />
+          ) : (
+            <div
+              onClick={startEditName}
+              title="Нажмите, чтобы изменить ник"
+              style={{
+                fontWeight: 600, color: 'var(--text-1)', fontSize: 14,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              {username}
+              <span style={{ fontSize: 10, color: 'var(--text-3)', flexShrink: 0 }}>✎</span>
+            </div>
+          )}
           <div style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 2 }}>Игрок</div>
         </div>
 
@@ -173,7 +227,7 @@ export default function Home({ onLogout }: Props) {
         <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {([
             ['play',     '▶', 'Играть'],
-            ['console',  '▣', 'Консоль'],
+            ['console',  '>_', 'Консоль'],
             ['skin',     '🎨', 'Скин'],
             ['settings', '⚙', 'Настройки']
           ] as [Tab, string, string][]).map(([t, icon, label]) => (
@@ -376,15 +430,39 @@ export default function Home({ onLogout }: Props) {
         {/* ── Console tab ── */}
         {tab === 'console' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
               <div style={{ fontWeight: 600 }}>Консоль игры</div>
-              <button
-                className="btn-ghost"
-                style={{ width: 'auto', fontSize: 12 }}
-                onClick={() => setLogs([])}
-              >
-                Очистить
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="btn-ghost"
+                  style={{ width: 'auto', fontSize: 12 }}
+                  onClick={() => {
+                    const text = logs.join('')
+                    if (text) navigator.clipboard.writeText(text)
+                  }}
+                >
+                  Копировать
+                </button>
+                <button
+                  className="btn-ghost"
+                  style={{
+                    width: 'auto', fontSize: 12,
+                    color: autoScroll ? 'var(--accent)' : 'var(--text-3)',
+                    borderColor: autoScroll ? 'var(--accent)' : undefined
+                  }}
+                  onClick={() => setAutoScroll(v => !v)}
+                  title="Авто-прокрутка к концу"
+                >
+                  ↓ Авто
+                </button>
+                <button
+                  className="btn-ghost"
+                  style={{ width: 'auto', fontSize: 12 }}
+                  onClick={() => setLogs([])}
+                >
+                  Очистить
+                </button>
+              </div>
             </div>
             <div
               ref={consoleRef}
@@ -399,12 +477,14 @@ export default function Home({ onLogout }: Props) {
                 lineHeight: 1.6,
                 color: 'var(--text-2)',
                 whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all'
+                wordBreak: 'break-all',
+                userSelect: 'text',
+                cursor: 'text',
               }}
             >
               {logs.length === 0
-                ? <span style={{ color: 'var(--text-3)' }}>Запустите игру, чтобы увидеть вывод...</span>
-                : logs.join('')}
+                ? <span style={{ color: 'var(--text-3)', userSelect: 'none' }}>Запустите игру, чтобы увидеть вывод...</span>
+                : logs.map((line, i) => <span key={i}>{line}</span>)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
               Строк: {logs.length} {status === 'running' && '• ● Игра запущена'}
@@ -488,37 +568,105 @@ export default function Home({ onLogout }: Props) {
 
 function SkinTab({ cfg }: { cfg: any }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
-  const [preview, setPreview]           = useState<string | null>(null)
   const [model, setModel]               = useState<'classic' | 'slim'>('classic')
   const [uploading, setUploading]       = useState(false)
   const [msg, setMsg]                   = useState<{ type: 'error' | 'success'; text: string } | null>(null)
-  const [skinTs, setSkinTs]             = useState(Date.now())  // cache-bust
+  const [skinTs, setSkinTs]             = useState(Date.now())
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const viewerRef  = useRef<any>(null)
+
+  const email = cfg?.email || ''
+  const serverSkinUrl = email
+    ? `${cfg?.authServerUrl}/skins/${encodeURIComponent(email)}.png?t=${skinTs}`
+    : null
+
+  const baseUrl      = cfg?.authServerUrl || 'http://localhost:3000'
+  const defaultSkinUrl = `${baseUrl}/skins/default.png`
+
+  // Resolve which skin URL to load: user-specific (may 404) → default → nothing
+  async function resolveSkinUrl(): Promise<string | null> {
+    const candidates = [serverSkinUrl, defaultSkinUrl].filter(Boolean) as string[]
+    for (const url of candidates) {
+      try {
+        const r = await fetch(url, { method: 'HEAD' })
+        if (r.ok) return url
+      } catch { /* ignore */ }
+    }
+    return null
+  }
+
+  // Load skin into viewer, with full fallback chain
+  async function reloadViewer(v: any, file?: string | null) {
+    if (file) {
+      try {
+        const dataUrl = await window.api.dialog.readDataUrl(file)
+        await v.loadSkin(dataUrl)
+        return
+      } catch { /* fall through */ }
+    }
+    const url = await resolveSkinUrl()
+    if (url) v.loadSkin(url).catch(() => {})
+  }
+
+  // ── Init 3D viewer once ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!canvasRef.current) return
+    let disposed = false
+
+    import('skinview3d').then(async (sv3d) => {
+      if (disposed || !canvasRef.current) return
+
+      const viewer = new sv3d.SkinViewer({
+        canvas: canvasRef.current,
+        width:  160,
+        height: 280,
+      })
+
+      viewer.controls.enableRotate = true
+      viewer.controls.enableZoom   = false
+      viewer.controls.enablePan    = false
+      viewer.autoRotate            = true
+      viewer.autoRotateSpeed       = 0.8
+      viewer.animation             = new sv3d.WalkingAnimation()
+      viewer.fov                   = 70
+      viewer.zoom                  = 0.9
+
+      viewerRef.current = { viewer, sv3d }
+
+      // Load skin immediately after viewer is ready
+      await reloadViewer(viewer)
+    })
+
+    return () => {
+      disposed = true
+      viewerRef.current?.viewer?.dispose()
+      viewerRef.current = null
+    }
+  }, []) // eslint-disable-line
+
+  // ── Reload skin when file selection or server skin changes ───────────────────
+  useEffect(() => {
+    const v = viewerRef.current?.viewer
+    if (!v) return
+    reloadViewer(v, selectedFile)
+  }, [selectedFile, skinTs]) // eslint-disable-line
+
+  // ── Sync slim model ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const v = viewerRef.current?.viewer
+    if (!v) return
+    v.playerObject.skin.slim = model === 'slim'
+  }, [model])
 
   if (!cfg) return null
-
-  const uuidNoDashes = (cfg.uuid || '').replace(/-/g, '')
-  const serverSkinUrl = uuidNoDashes
-    ? `${cfg.authServerUrl}/skins/${uuidNoDashes}.png?t=${skinTs}`
-    : null
 
   async function pickFile() {
     const filePath = await window.api.dialog.openFile([
       { name: 'PNG Image', extensions: ['png'] }
     ])
     if (!filePath) return
-
     setSelectedFile(filePath)
     setMsg(null)
-
-    // Read file as data URL for local preview
-    // We use IPC trick: ask main to convert to base64, then display
-    try {
-      // Use fetch with file:// URL trick — won't work in Electron renderer directly.
-      // Instead we'll just show the file path and let the user know it's selected.
-      setPreview(null)  // reset server preview to show pending state
-    } catch {
-      // ignore
-    }
   }
 
   async function upload() {
@@ -529,7 +677,7 @@ function SkinTab({ cfg }: { cfg: any }) {
       await window.api.skin.upload(selectedFile, model)
       setMsg({ type: 'success', text: 'Скин успешно загружен!' })
       setSelectedFile(null)
-      setSkinTs(Date.now())  // refresh preview
+      setSkinTs(Date.now())
     } catch (err: any) {
       const text = err?.response?.data?.error || err?.message || 'Ошибка загрузки'
       setMsg({ type: 'error', text })
@@ -545,6 +693,7 @@ function SkinTab({ cfg }: { cfg: any }) {
       await window.api.skin.delete()
       setMsg({ type: 'success', text: 'Скин сброшен' })
       setSkinTs(Date.now())
+      setSelectedFile(null)
     } catch (err: any) {
       setMsg({ type: 'error', text: err?.message || 'Ошибка' })
     } finally {
@@ -559,62 +708,46 @@ function SkinTab({ cfg }: { cfg: any }) {
         Загрузите PNG 64×64 или 64×32 — он отобразится в игре
       </div>
 
-      <div style={{ display: 'flex', gap: 28, maxWidth: 620, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 28, maxWidth: 680, flexWrap: 'wrap' }}>
 
-        {/* Preview */}
+        {/* ── 3D Viewer ── */}
         <div style={{
-          width: 160, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12
+          flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
         }}>
           <div style={{
-            width: 120, height: 120,
             background: 'var(--bg-2)',
-            border: '2px dashed var(--border)',
+            border: '1px solid var(--border)',
             borderRadius: 12,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
-            imageRendering: 'pixelated' as any
+            cursor: 'grab',
           }}>
-            {serverSkinUrl ? (
-              <img
-                src={serverSkinUrl}
-                alt="skin"
-                style={{
-                  width: '100%', height: '100%',
-                  objectFit: 'contain',
-                  imageRendering: 'pixelated'
-                }}
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
-            ) : (
-              <span style={{ fontSize: 40 }}>👤</span>
-            )}
+            <canvas
+              ref={canvasRef}
+              style={{ display: 'block' }}
+            />
           </div>
-          <div style={{ color: 'var(--text-3)', fontSize: 11, textAlign: 'center' }}>
-            Текущий скин на сервере
+          <div style={{ color: 'var(--text-3)', fontSize: 10, textAlign: 'center' }}>
+            Перетащите чтобы повернуть
           </div>
         </div>
 
-        {/* Controls */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── Controls ── */}
+        <div style={{ flex: 1, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* File picker */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontWeight: 600 }}>Выбор файла</div>
-
             <div style={{
               padding: '10px 14px',
               background: 'var(--bg-3)', border: '1px solid var(--border)',
               borderRadius: 'var(--radius)',
-              color: selectedFile ? 'var(--text-1)' : 'var(--text-3)',
+              color: selectedFile ? 'var(--accent)' : 'var(--text-3)',
               fontSize: 12, fontFamily: 'monospace',
               wordBreak: 'break-all'
             }}>
-              {selectedFile
-                ? selectedFile.split(/[\\/]/).pop()
-                : 'Файл не выбран'}
+              {selectedFile ? selectedFile.split(/[\\/]/).pop() : 'Файл не выбран'}
             </div>
-
             <button
               className="btn-secondary"
               style={{ width: 'auto', alignSelf: 'flex-start' }}
@@ -643,7 +776,7 @@ function SkinTab({ cfg }: { cfg: any }) {
                     cursor: 'pointer', fontSize: 13
                   }}
                 >
-                  {m === 'classic' ? '🟫 Классический (4px руки)' : '📐 Тонкий (3px руки)'}
+                  {m === 'classic' ? '🟫 Классик' : '📐 Slim'}
                 </button>
               ))}
             </div>
@@ -664,7 +797,9 @@ function SkinTab({ cfg }: { cfg: any }) {
               onClick={upload}
               disabled={!selectedFile || uploading}
             >
-              {uploading ? <><div className="spinner" style={{ borderTopColor: '#000' }} /> Загрузка...</> : '⬆ Загрузить скин'}
+              {uploading
+                ? <><div className="spinner" style={{ borderTopColor: '#000' }} /> Загрузка...</>
+                : '⬆ Загрузить скин'}
             </button>
             <button
               className="btn-secondary"
@@ -676,7 +811,7 @@ function SkinTab({ cfg }: { cfg: any }) {
             </button>
           </div>
 
-          <div style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.6 }}>
+          <div style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.7 }}>
             Скин отобразится при следующем входе в игру.<br />
             Требования: PNG, 64×64 px, макс. 1 МБ.
           </div>
