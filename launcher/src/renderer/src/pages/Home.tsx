@@ -26,6 +26,7 @@ export default function Home({ onLogout }: Props) {
   const [username, setUsername]     = useState('')
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput]   = useState('')
+  const [nameError, setNameError]   = useState<string | null>(null)
   const [java, setJava]             = useState<JavaInfo | null>(null)
   const [javaLoading, setJavaLoad]  = useState(true)
   const [versions, setVersions]     = useState<VersionEntry[]>([])
@@ -143,21 +144,40 @@ export default function Home({ onLogout }: Props) {
 
   function startEditName() {
     setNameInput(username)
+    setNameError(null)
     setEditingName(true)
   }
 
   async function commitName() {
     const trimmed = nameInput.trim()
     if (trimmed && trimmed !== username) {
-      setUsername(trimmed)
-      await saveCfg({ username: trimmed })
+      try {
+        const result = await window.api.auth.setUsername(trimmed)
+        setUsername(result.username)
+        setEditingName(false)
+        setNameError(null)
+      } catch (err: any) {
+        // axios wraps server errors in err.response
+        const data = err?.response?.data
+        if (data?.error === 'CooldownActive') {
+          const h = Math.floor(data.remainsMs / 3600000)
+          const m = Math.ceil((data.remainsMs % 3600000) / 60000)
+          const label = h > 0 ? `${h} ч ${m} мин` : `${m} мин`
+          setNameError(`Смена ника доступна через ${label}`)
+        } else {
+          setNameError(data?.error || err?.message || 'Ошибка')
+        }
+        // keep edit mode open so user sees the error
+      }
+    } else {
+      setEditingName(false)
+      setNameError(null)
     }
-    setEditingName(false)
   }
 
   function handleNameKey(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') commitName()
-    if (e.key === 'Escape') setEditingName(false)
+    if (e.key === 'Escape') { setEditingName(false); setNameError(null) }
   }
 
   const progressPct = progress && progress.total > 0
@@ -188,25 +208,32 @@ export default function Home({ onLogout }: Props) {
             🎮
           </div>
           {editingName ? (
-            <input
-              autoFocus
-              value={nameInput}
-              onChange={e => setNameInput(e.target.value)}
-              onBlur={commitName}
-              onKeyDown={handleNameKey}
-              maxLength={16}
-              style={{
-                background: 'var(--bg-3)',
-                border: '1px solid var(--accent)',
-                borderRadius: 6,
-                color: 'var(--text-1)',
-                fontSize: 13,
-                fontWeight: 600,
-                padding: '3px 7px',
-                width: '100%',
-                outline: 'none',
-              }}
-            />
+            <>
+              <input
+                autoFocus
+                value={nameInput}
+                onChange={e => { setNameInput(e.target.value); setNameError(null) }}
+                onBlur={commitName}
+                onKeyDown={handleNameKey}
+                maxLength={16}
+                style={{
+                  background: 'var(--bg-3)',
+                  border: `1px solid ${nameError ? 'var(--red, #e05)' : 'var(--accent)'}`,
+                  borderRadius: 6,
+                  color: 'var(--text-1)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '3px 7px',
+                  width: '100%',
+                  outline: 'none',
+                }}
+              />
+              {nameError && (
+                <div style={{ color: 'var(--red, #e05)', fontSize: 10, marginTop: 3, lineHeight: 1.3 }}>
+                  {nameError}
+                </div>
+              )}
+            </>
           ) : (
             <div
               onClick={startEditName}

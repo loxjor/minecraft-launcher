@@ -25,7 +25,9 @@ const api = {
     logout: () =>
       ipcRenderer.invoke('auth:logout'),
     validate: () =>
-      ipcRenderer.invoke('auth:validate')
+      ipcRenderer.invoke('auth:validate'),
+    setUsername: (username: string) =>
+      ipcRenderer.invoke('auth:setUsername', username)
   },
 
   // Java

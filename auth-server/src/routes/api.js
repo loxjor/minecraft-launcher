@@ -115,6 +115,46 @@ router.post('/skin/default', (req, res) => {
   res.json({ success: true })
 })
 
+// ─── Username change ──────────────────────────────────────────────────────────
+
+const USERNAME_COOLDOWN_MS = 24 * 60 * 60 * 1000 // 1 day
+
+// PUT /api/username  { accessToken, username }
+router.put('/username', (req, res) => {
+  const { accessToken, username } = req.body || {}
+
+  const db    = getDB()
+  const token = db.tokens.findWithUser(accessToken)
+  if (!token) return res.status(403).json({ error: 'Unauthorized' })
+
+  if (!username || username.length < 3 || username.length > 16)
+    return res.status(400).json({ error: 'Username must be 3–16 characters' })
+  if (!/^[a-zA-Z0-9_]+$/.test(username))
+    return res.status(400).json({ error: 'Username can only contain letters, numbers and underscores' })
+
+  // Check cooldown
+  const user     = db.users.findById(token.user_id)
+  const changedAt = new Date(user.username_changed_at || user.created_at).getTime()
+  const elapsed   = Date.now() - changedAt
+  if (elapsed < USERNAME_COOLDOWN_MS) {
+    const remainsMs = USERNAME_COOLDOWN_MS - elapsed
+    return res.status(429).json({
+      error: 'CooldownActive',
+      remainsMs,
+      message: `Username can be changed again in ${Math.ceil(remainsMs / 3600000)} hour(s)`
+    })
+  }
+
+  // Check uniqueness (exclude self)
+  const existing = db.users.findByUsernameOrEmail(username)
+  if (existing && existing.id !== token.user_id)
+    return res.status(409).json({ error: 'Username is already taken' })
+
+  db.users.setUsername(token.user_id, username)
+  console.log(`[API] Username changed: ${token.username} → ${username}`)
+  res.json({ success: true, username })
+})
+
 // ─── Launcher version ─────────────────────────────────────────────────────────
 
 router.get('/launcher/version', (_req, res) => {

@@ -98,6 +98,19 @@ ipcMain.handle('auth:login', async (_e, username: string, password: string) => {
   return profile
 })
 
+ipcMain.handle('auth:setUsername', async (_e, newUsername: string) => {
+  const cfg = loadConfig()
+  if (!cfg.accessToken) throw new Error('Not logged in')
+
+  const res = await axios.put(`${cfg.authServerUrl}/api/username`, {
+    accessToken: cfg.accessToken,
+    username: newUsername
+  }, { timeout: 10_000 })
+
+  saveConfig({ ...cfg, username: res.data.username })
+  return res.data  // { success, username }
+})
+
 ipcMain.handle('auth:logout', async () => {
   const cfg = loadConfig()
   if (cfg.accessToken) {

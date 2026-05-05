@@ -76,9 +76,13 @@ const db = {
     existsByUsernameOrEmail(username, email) {
       return !!_findOne('users', u => u.username === username || u.email === email)
     },
-    insert(data)  { return _insert('users', data) },
+    insert(data)  { return _insert('users', { username_changed_at: new Date().toISOString(), ...data }) },
+    findById(id)  { return _findOne('users', u => u.id === id) },
     setSkinModel(userId, model) {
       _update('users', u => u.id === userId, { skin_model: model })
+    },
+    setUsername(userId, username) {
+      return _update('users', u => u.id === userId, { username, username_changed_at: new Date().toISOString() })
     }
   },
 
