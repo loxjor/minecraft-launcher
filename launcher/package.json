@@ -1,12 +1,17 @@
 {
   "name": "minecraft-launcher",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Custom Minecraft Launcher",
+  "author": "loxjor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/loxjor/minecraft-launcher.git"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "package": "npm run build && electron-builder"
+    "package": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
