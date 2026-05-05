@@ -1,19 +1,11 @@
-# Dependencies
 node_modules/
 
 # Build output
 launcher/out/
 launcher/dist/
 
-# Runtime data (never commit these!)
-auth-server/data/
+# Runtime data
 launcher/data/
-
-# Private RSA keys — sensitive!
-*.pem
-
-# SQLite (legacy, using JSON now)
-*.db
 
 # Environment
 .env
