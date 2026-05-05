@@ -1,7 +1,7 @@
 # ⛏ MC Launcher
 
 Кастомный лаунчер Minecraft с авторизацией через собственный сервер (Yggdrasil-совместимый).  
-Позволяет запускать лицензионный и нелицензионный Minecraft, управлять скинами и версиями.
+Позволяет запускать Minecraft, управлять скинами и версиями без аккаунта Mojang.
 
 ---
 
@@ -12,11 +12,13 @@
 | 🔐 Авторизация | Собственный Yggdrasil-сервер — логин, регистрация, токены |
 | ☕ Java | Автоскачивание и установка Java 21 (Adoptium) |
 | 📦 Версии | Загрузка любой версии Minecraft напрямую с серверов Mojang |
-| 🎨 Скины | Загрузка PNG-скина, выбор модели (классик/slim) |
+| 🎨 Скины | Загрузка PNG-скина, выбор модели (классик/slim), 3D-просмотр |
+| 🖼️ Дефолтный скин | Пользователи без своего скина получают общий дефолтный |
+| ✏️ Смена ника | Инлайн-редактирование с кулдауном 24 часа |
 | 📡 Сессии | Совместимость с серверами через Yggdrasil session API |
-| 🖥️ Консоль | Вывод логов игры в реальном времени |
+| 🖥️ Консоль | Вывод логов игры в реальном времени, выделение и копирование |
 | 🔧 Настройки | Кастомный путь к Java, папка игры, объём памяти |
-| 🪟 Custom UI | Frameless-окно с тайтлбаром, тёмная тема |
+| 🐳 Docker | Auth-сервер готов к запуску в контейнере |
 
 ---
 
@@ -53,15 +55,40 @@
 3. На экране входа нажми **«Изменить»** и укажи URL сервера авторизации
 4. Зарегистрируйся или войди
 
-### Для владельцев сервера (auth-server)
+### Auth-сервер — Docker (рекомендуется)
+
+```bash
+git clone https://github.com/loxjor/minecraft-launcher.git
+cd minecraft-launcher/auth-server
+```
+
+Отредактируй `docker-compose.yml` — укажи свой IP или домен:
+
+```yaml
+environment:
+  - PUBLIC_HOST=1.2.3.4:3000   # твой внешний IP или домен
+```
+
+Запусти:
+
+```bash
+docker compose up -d
+```
+
+Проверь:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+> **Данные** (`db.json`, RSA-ключи, скины) хранятся в `./data/` — при пересборке контейнера не теряются.
+
+### Auth-сервер — без Docker
 
 #### Требования
 - Node.js 18+
 
-#### Установка
-
 ```bash
-git clone https://github.com/YOUR_USERNAME/minecraft-launcher.git
 cd minecraft-launcher/auth-server
 npm install
 npm start
@@ -70,21 +97,29 @@ npm start
 Сервер запустится на `http://localhost:3000`.  
 При первом старте автоматически генерируется RSA-4096 пара ключей.
 
-#### Порты и маршруты
+---
+
+## 🔌 API auth-сервера
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/` | Yggdrasil metadata (authlib-injector читает при старте) |
+| GET | `/` | Yggdrasil metadata (authlib-injector) |
+| GET | `/api/health` | Проверка работоспособности |
 | POST | `/api/register` | Регистрация |
+| PUT | `/api/username` | Смена ника (кулдаун 24 ч) |
+| POST | `/api/skin` | Загрузка скина (base64 PNG) |
+| DELETE | `/api/skin` | Сброс скина |
+| GET | `/api/skin/info` | Информация о скине текущего пользователя |
+| POST | `/api/skin/default` | Установка дефолтного скина для всех |
+| GET | `/skins/:file` | Получение PNG-скина (fallback → default.png) |
 | POST | `/authserver/authenticate` | Вход |
 | POST | `/authserver/validate` | Проверка токена |
 | POST | `/authserver/refresh` | Обновление токена |
+| POST | `/authserver/invalidate` | Выход (инвалидация токена) |
+| POST | `/authserver/signout` | Выход по логину/паролю |
 | POST | `/sessionserver/session/minecraft/join` | Присоединение к серверу |
 | GET | `/sessionserver/session/minecraft/hasJoined` | Проверка игрока на сервере |
 | GET | `/sessionserver/session/minecraft/profile/:uuid` | Профиль игрока |
-| POST | `/api/skin` | Загрузка скина (base64 PNG) |
-| DELETE | `/api/skin` | Сброс скина |
-| GET | `/skins/:uuid.png` | Получение скина |
 
 ---
 
@@ -94,10 +129,8 @@ npm start
 - Node.js 18+
 - npm 9+
 
-### Установка зависимостей
-
 ```bash
-git clone https://github.com/YOUR_USERNAME/minecraft-launcher.git
+git clone https://github.com/loxjor/minecraft-launcher.git
 cd minecraft-launcher
 npm run install:all
 ```
@@ -110,12 +143,6 @@ npm run auth:dev
 
 # Терминал 2 — лаунчер
 npm run launcher
-```
-
-Или через батники (Windows):
-```
-start_auth.bat
-start_launsher.bat
 ```
 
 ### Сборка установщика (.exe)
@@ -133,22 +160,26 @@ npm run package
 
 ```
 minecraft-launcher/
-├── auth-server/             # Сервер авторизации
+├── auth-server/
+│   ├── assets/
+│   │   └── default.png          # Дефолтный скин (для пользователей без своего)
 │   ├── src/
-│   │   ├── index.js         # Express-приложение
-│   │   ├── database.js      # JSON-хранилище (users, tokens, sessions)
-│   │   ├── crypto.js        # RSA ключи + подпись текстур
-│   │   ├── skins.js         # Работа с PNG-файлами скинов
+│   │   ├── index.js             # Express-приложение
+│   │   ├── database.js          # JSON-хранилище (users, tokens, sessions)
+│   │   ├── crypto.js            # RSA-4096 ключи + подпись текстур
+│   │   ├── skins.js             # Работа с PNG-файлами скинов
 │   │   └── routes/
-│   │       ├── api.js           # /api/* (register, skin)
+│   │       ├── api.js           # /api/*
 │   │       ├── authserver.js    # /authserver/* (Yggdrasil auth)
 │   │       └── sessionserver.js # /sessionserver/* (Yggdrasil session)
+│   ├── Dockerfile
+│   ├── docker-compose.yml
 │   └── package.json
 │
-├── launcher/                # Electron-лаунчер
+├── launcher/
 │   ├── src/
 │   │   ├── main/
-│   │   │   ├── index.ts     # Главный процесс, IPC
+│   │   │   ├── index.ts     # Главный процесс, IPC-хендлеры
 │   │   │   ├── auth.ts      # HTTP-клиент к auth-серверу
 │   │   │   ├── java.ts      # Поиск и загрузка Java
 │   │   │   ├── minecraft.ts # Загрузка версий, запуск игры
@@ -163,8 +194,6 @@ minecraft-launcher/
 │   │           └── Home.tsx  # Play, Console, Skin, Settings
 │   └── package.json
 │
-├── start_auth.bat           # Быстрый запуск сервера
-├── start_launsher.bat       # Быстрый запуск лаунчера
 └── README.md
 ```
 
@@ -173,27 +202,28 @@ minecraft-launcher/
 ## 🛠️ Стек технологий
 
 **Лаунчер:**
-- [Electron](https://electronjs.org/) — десктопное приложение
-- [React 18](https://react.dev/) + TypeScript — UI
+- [Electron](https://electronjs.org/) + [React 18](https://react.dev/) + TypeScript
 - [electron-vite](https://electron-vite.org/) — сборка
+- [skinview3d](https://github.com/bs-community/skinview3d) — 3D-просмотр скина
 - [axios](https://axios-http.com/) — HTTP
-- [adm-zip](https://github.com/cthackers/adm-zip) — распаковка библиотек/Java
-- [authlib-injector](https://github.com/yushijinhun/authlib-injector) — патч Minecraft клиента для кастомного auth
+- [authlib-injector](https://github.com/yushijinhun/authlib-injector) — патч Minecraft для кастомного auth
 
 **Auth Server:**
 - [Express](https://expressjs.com/) — HTTP-сервер
 - [bcryptjs](https://github.com/dcodeIO/bcrypt.js) — хэширование паролей
-- [Node.js crypto](https://nodejs.org/api/crypto.html) — RSA-4096 ключи и подпись
+- [Node.js crypto](https://nodejs.org/api/crypto.html) — RSA-4096 и подпись текстур
 - JSON-файл — хранилище данных (без нативных зависимостей)
+- [Docker](https://www.docker.com/) — контейнеризация
 
 ---
 
 ## ⚠️ Важные заметки
 
-- **Приватный ключ** (`auth-server/data/private.pem`) никогда не коммитится в git (добавлен в `.gitignore`)
-- Auth-сервер нужен только если ты хочешь **собственную авторизацию** (для своего сервера Minecraft)
-- Для работы в интернете auth-сервер нужно задеплоить на VPS и настроить HTTPS
+- **Приватный ключ** (`auth-server/data/private.pem`) никогда не коммитится в git
+- Скины пользователей хранятся в `auth-server/data/skins/` и тоже не попадают в git
+- Дефолтный скин (`auth-server/assets/default.png`) — в репозитории, можно заменить
 - `authlib-injector` скачивается автоматически при первом запуске игры
+- Для работы в интернете укажи реальный IP/домен в `PUBLIC_HOST`
 
 ---
 
