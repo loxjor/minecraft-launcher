@@ -4,7 +4,10 @@ import fs from 'fs'
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json')
 
+export type AuthMode = 'custom' | 'ely' | 'mojang'
+
 export interface LauncherConfig {
+  authMode: AuthMode
   authServerUrl: string
   selectedVersion: string
   memory: number          // MB
@@ -18,6 +21,7 @@ export interface LauncherConfig {
 }
 
 const DEFAULTS: LauncherConfig = {
+  authMode: 'custom',
   authServerUrl: 'http://localhost:3000',
   selectedVersion: '1.20.4',
   memory: 2048,

@@ -84,7 +84,7 @@ ipcMain.handle('auth:register', async (_e, username: string, email: string, pass
 
 ipcMain.handle('auth:login', async (_e, username: string, password: string) => {
   const cfg = loadConfig()
-  const profile = await Auth.login(cfg.authServerUrl, username, password, cfg.clientToken || undefined)
+  const profile = await Auth.login(cfg.authMode, cfg.authServerUrl, username, password, cfg.clientToken || undefined)
 
   saveConfig({
     ...cfg,
@@ -114,7 +114,7 @@ ipcMain.handle('auth:setUsername', async (_e, newUsername: string) => {
 ipcMain.handle('auth:logout', async () => {
   const cfg = loadConfig()
   if (cfg.accessToken) {
-    await Auth.logout(cfg.authServerUrl, cfg.accessToken)
+    await Auth.logout(cfg.authMode, cfg.authServerUrl, cfg.accessToken)
   }
   saveConfig({ ...cfg, accessToken: '', clientToken: '', username: '', uuid: '', email: '' })
   return true
@@ -123,7 +123,7 @@ ipcMain.handle('auth:logout', async () => {
 ipcMain.handle('auth:validate', async () => {
   const cfg = loadConfig()
   if (!cfg.accessToken) return false
-  return Auth.validate(cfg.authServerUrl, cfg.accessToken, cfg.clientToken)
+  return Auth.validate(cfg.authMode, cfg.authServerUrl, cfg.accessToken, cfg.clientToken)
 })
 
 // ─── Java ─────────────────────────────────────────────────────────────────────
@@ -171,6 +171,7 @@ ipcMain.handle('minecraft:launch', async (_e, opts: {
     username: cfg.username,
     uuid: cfg.uuid,
     accessToken: cfg.accessToken,
+    authMode: cfg.authMode,
     authServerUrl: cfg.authServerUrl,
     memory: opts.memory,
     javaExe: javaInfo.path,

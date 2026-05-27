@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { AuthMode } from './config'
 
 export interface AuthProfile {
   accessToken: string
@@ -6,6 +7,13 @@ export interface AuthProfile {
   username: string
   uuid: string        // no dashes
   email: string
+}
+
+// Build the correct auth endpoint URL per mode
+function authUrl(mode: AuthMode, customBase: string, path: string): string {
+  if (mode === 'ely')    return `https://authserver.ely.by/auth${path}`
+  if (mode === 'mojang') return `https://authserver.mojang.com${path}`
+  return `${customBase}/authserver${path}`
 }
 
 export async function register(
@@ -21,13 +29,14 @@ export async function register(
 }
 
 export async function login(
+  mode: AuthMode,
   serverUrl: string,
   username: string,
   password: string,
   clientToken?: string
 ): Promise<AuthProfile> {
   const res = await axios.post(
-    `${serverUrl}/authserver/authenticate`,
+    authUrl(mode, serverUrl, '/authenticate'),
     { username, password, clientToken, requestUser: true },
     { timeout: 10000 }
   )
@@ -46,18 +55,18 @@ export async function login(
   }
 }
 
-export async function validate(serverUrl: string, accessToken: string, clientToken: string): Promise<boolean> {
+export async function validate(mode: AuthMode, serverUrl: string, accessToken: string, clientToken: string): Promise<boolean> {
   try {
-    await axios.post(`${serverUrl}/authserver/validate`, { accessToken, clientToken }, { timeout: 5000 })
+    await axios.post(authUrl(mode, serverUrl, '/validate'), { accessToken, clientToken }, { timeout: 5000 })
     return true
   } catch {
     return false
   }
 }
 
-export async function logout(serverUrl: string, accessToken: string): Promise<void> {
+export async function logout(mode: AuthMode, serverUrl: string, accessToken: string): Promise<void> {
   try {
-    await axios.post(`${serverUrl}/authserver/invalidate`, { accessToken }, { timeout: 5000 })
+    await axios.post(authUrl(mode, serverUrl, '/invalidate'), { accessToken }, { timeout: 5000 })
   } catch {
     // ignore errors on logout
   }

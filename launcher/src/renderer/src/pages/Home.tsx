@@ -236,15 +236,18 @@ export default function Home({ onLogout }: Props) {
             </>
           ) : (
             <div
-              onClick={startEditName}
-              title="Нажмите, чтобы изменить ник"
+              onClick={cfg?.authMode === 'custom' ? startEditName : undefined}
+              title={cfg?.authMode === 'custom' ? 'Нажмите, чтобы изменить ник' : undefined}
               style={{
                 fontWeight: 600, color: 'var(--text-1)', fontSize: 14,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                cursor: cfg?.authMode === 'custom' ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', gap: 5,
               }}
             >
               {username}
-              <span style={{ fontSize: 10, color: 'var(--text-3)', flexShrink: 0 }}>✎</span>
+              {cfg?.authMode === 'custom' && (
+                <span style={{ fontSize: 10, color: 'var(--text-3)', flexShrink: 0 }}>✎</span>
+              )}
             </div>
           )}
           <div style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 2 }}>Игрок</div>
@@ -255,7 +258,7 @@ export default function Home({ onLogout }: Props) {
           {([
             ['play',     '▶', 'Играть'],
             ['console',  '>_', 'Консоль'],
-            ['skin',     '🎨', 'Скин'],
+            ...(cfg?.authMode === 'custom' ? [['skin', '🎨', 'Скин']] : []),
             ['settings', '⚙', 'Настройки']
           ] as [Tab, string, string][]).map(([t, icon, label]) => (
             <button

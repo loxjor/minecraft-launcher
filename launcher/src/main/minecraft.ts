@@ -15,6 +15,7 @@ export interface LaunchOptions {
   username: string
   uuid: string
   accessToken: string
+  authMode: string
   authServerUrl: string
   memory: number          // MB
   javaExe: string
@@ -243,7 +244,7 @@ export async function downloadVersion(
 export function launchGame(options: LaunchOptions, win: BrowserWindow): ChildProcess {
   const {
     version, username, uuid, accessToken,
-    authServerUrl, memory, javaExe, dataDir, gameDir
+    authMode, authServerUrl, memory, javaExe, dataDir, gameDir
   } = options
 
   const versionDir   = path.join(dataDir, 'versions', version)
@@ -293,8 +294,13 @@ export function launchGame(options: LaunchOptions, win: BrowserWindow): ChildPro
   // JVM args — only what the version JSON doesn't handle itself.
   // -Djava.library.path, -Dminecraft.launcher.*, -cp are injected via ${templateVars}
   // by the version JSON's arguments.jvm section, so we don't add them here.
+  // authlib-injector: custom → own server, ely → ely.by, mojang → not needed
+  const authlibTarget = authMode === 'mojang' ? null
+    : authMode === 'ely' ? 'https://authserver.ely.by'
+    : authServerUrl
+
   const jvmArgs: string[] = [
-    `-javaagent:${authlibJar}=${authServerUrl}`,
+    ...(authlibTarget ? [`-javaagent:${authlibJar}=${authlibTarget}`] : []),
     `-Xmx${memory}M`,
     `-Xms512M`,
     '-XX:+UseG1GC',
